@@ -12,6 +12,12 @@ type RenderTree interface {
 	LastUpdated() time.Time
 }
 
+type RenderGroup interface {
+	RenderTree
+
+	Add(child RenderTree)
+}
+
 type Progress interface {
 	RenderTree
 
@@ -23,14 +29,10 @@ type Progress interface {
 }
 
 type Logger interface {
-	io.Writer
-
-	Child(name string) Logger
+	RenderTree
 
 	Info(msg string, args ...any)
 	Warn(msg string, args ...any)
 	Error(msg string, args ...any)
 	Debug(msg string, args ...any)
-
-	Progress(max int64, description string) Progress
 }

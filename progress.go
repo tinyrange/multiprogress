@@ -62,8 +62,9 @@ func formatTime(secs float64) string {
 
 func (p *progress) countProgress() string {
 	maxCountLen := len(strconv.Itoa(int(p.max)))
+	currentLen := min(maxCountLen, len(strconv.Itoa(int(p.current))))
 
-	currentCount := fmt.Sprintf("%s%d", strings.Repeat(" ", maxCountLen-len(strconv.Itoa(int(p.current)))), p.current)
+	currentCount := fmt.Sprintf("%s%d", strings.Repeat(" ", maxCountLen-currentLen), p.current)
 
 	return fmt.Sprintf("%s/%d", currentCount, p.max)
 }
@@ -83,13 +84,22 @@ func (p *progress) Render(width int) string {
 		return description + completedString
 	}
 
-	width -= 7 // width of progress percentage.
 	width -= 2 // width between percentage and count.
 	width -= 7 // width of end.
 
 	currentProgress := float64(p.current) / float64(p.max)
 
 	currentTime := time.Since(p.startTime)
+
+	currentRateStr := "-"
+
+	if p.current > 0 {
+		currentRate := currentTime / time.Duration(p.current)
+
+		currentRateStr = fmt.Sprintf("% 8.03fms/iter", currentRate.Seconds()*1000)
+	}
+
+	width -= len(currentRateStr) + 4 // The width of the iteration speed.
 
 	remainingTime := "-"
 
@@ -105,6 +115,9 @@ func (p *progress) Render(width int) string {
 	countProgress := p.countProgress()
 
 	width -= len(countProgress) // width of count indicator.
+
+	progressPercentage := fmt.Sprintf("% 7.2f%%", currentProgress*100)
+	width -= len(progressPercentage)
 
 	var progress = " "
 	var description = p.description
@@ -127,11 +140,12 @@ func (p *progress) Render(width int) string {
 		progress = " [" + string(progressBar) + "] "
 	}
 
-	return fmt.Sprintf("%s%s%06.2f%% [%s : est %s]",
+	return fmt.Sprintf("%s%s%s [%s : %s : est %s]",
 		description,
 		progress,
-		currentProgress*100,
+		progressPercentage,
 		countProgress,
+		currentRateStr,
 		remainingTime,
 	)
 }

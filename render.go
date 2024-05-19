@@ -76,6 +76,7 @@ var (
 
 type TerminalRenderer struct {
 	out           *os.File
+	fps           int
 	tree          RenderTree
 	isTerm        bool
 	outFd         int
@@ -94,7 +95,7 @@ func (t *TerminalRenderer) Start() error {
 	tickRate := time.Second
 	t.outFd = int(t.out.Fd())
 	if term.IsTerminal(t.outFd) {
-		tickRate /= 24
+		tickRate /= time.Duration(t.fps)
 		t.isTerm = true
 	}
 
@@ -179,6 +180,6 @@ var (
 	_ io.Closer = &TerminalRenderer{}
 )
 
-func NewTerminalRenderer(out *os.File, tree RenderTree) *TerminalRenderer {
-	return &TerminalRenderer{out: out, tree: tree}
+func NewTerminalRenderer(out *os.File, fps int, tree RenderTree) *TerminalRenderer {
+	return &TerminalRenderer{out: out, fps: fps, tree: tree}
 }

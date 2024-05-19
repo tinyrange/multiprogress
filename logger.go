@@ -1,27 +1,34 @@
 package multiprogress
 
 import (
+	"bytes"
 	"context"
-	"io"
 	"log/slog"
-	"os"
 	"runtime"
+	"strings"
 	"time"
 )
 
+type annotatedMessage struct {
+	RenderTree
+	addTime time.Time
+}
+
+func (msg *annotatedMessage) LastUpdated() time.Time {
+	return msg.addTime
+}
+
+var (
+	_ RenderTree = &annotatedMessage{}
+)
+
 type logger struct {
-	io.Writer
-	slog.Handler
+	RenderGroup
 }
 
 // Child implements Logger.
 func (l *logger) Child(name string) Logger {
 	return l
-}
-
-// Progress implements Logger.
-func (l *logger) Progress(max int64, description string) Progress {
-	panic("unimplemented")
 }
 
 func (l *logger) log(level slog.Level, msg string, args ...any) {
@@ -35,7 +42,17 @@ func (l *logger) log(level slog.Level, msg string, args ...any) {
 	r := slog.NewRecord(time.Now(), level, msg, pc)
 	r.Add(args...)
 
-	_ = l.Handle(context.Background(), r)
+	buf := bytes.Buffer{}
+
+	handle := slog.NewTextHandler(&buf, &slog.HandlerOptions{})
+
+	_ = handle.Handle(context.Background(), r)
+
+	str := buf.String()
+
+	str = strings.Trim(str, "\r\n")
+
+	l.Add(&annotatedMessage{RenderTree: StringRenderer(str), addTime: time.Now()})
 }
 
 // Info implements Logger.
@@ -62,12 +79,6 @@ var (
 	_ Logger = &logger{}
 )
 
-func New(target io.Writer) Logger {
-	if target == nil {
-		target = os.Stderr
-	}
-	return &logger{
-		Writer:  target,
-		Handler: slog.NewTextHandler(target, &slog.HandlerOptions{}),
-	}
+func NewLogger(group RenderGroup) Logger {
+	return &logger{RenderGroup: group}
 }
